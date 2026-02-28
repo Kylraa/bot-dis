@@ -1,4 +1,11 @@
 const { Client, GatewayIntentBits } = require('discord.js');
+const express = require("express");
+
+const app = express();
+app.get("/", (req, res) => {
+  res.send("Bot is running");
+});
+app.listen(process.env.PORT || 3000);
 
 const client = new Client({
   intents: [
@@ -11,8 +18,6 @@ const client = new Client({
 client.once('ready', () => {
   console.log(`Bot online: ${client.user.tag}`);
 });
-
-client.login(process.env.TOKEN);
 
 client.on("messageCreate", async (message) => {
 
@@ -44,4 +49,4 @@ client.on("messageCreate", async (message) => {
     }
 });
 
-client.login(TOKEN);
+client.login(process.env.TOKEN);
