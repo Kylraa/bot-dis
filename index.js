@@ -247,6 +247,10 @@ songInfo = { url: yt[0].url };
 
 });
 
-client.login(process.env.TOKEN)
-  .then(() => console.log("Login success"))
-  .catch(err => console.error("Login error:", err));
+const http = require('http');
+http.createServer((req, res) => {
+  res.write('Bot is running');
+  res.end();
+}).listen(8080);
+
+client.login(process.env.DISCORD_TOKEN);
