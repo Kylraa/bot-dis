@@ -1,3 +1,4 @@
+require('dotenv').config();
 console.log("Bot is starting...");
 const { Client, GatewayIntentBits } = require('discord.js');
 const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
@@ -55,4 +56,4 @@ client.on("messageCreate", async (message) => {
 client.on("error", console.error);
 client.on("shardError", console.error);
 
-client.login(process.env.TOKEN).catch(console.error);
+client.login(process.env.TOKEN);
