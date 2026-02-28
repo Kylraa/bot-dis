@@ -253,4 +253,4 @@ http.createServer((req, res) => {
   res.end();
 }).listen(8080);
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.TOKEN);
