@@ -19,11 +19,14 @@ const play = require("play-dl");
 const express = require('express');
 
 // ===== WEB SERVER (CHO RENDER) =====
+const express = require("express");
 const app = express();
-app.get("/", (req, res) => res.send("Bot running"));
-if (process.env.RENDER) {
-  app.listen(process.env.PORT || 3000);
-}
+
+app.get("/", (req, res) => {
+  res.send("Bot is running");
+});
+
+app.listen(process.env.PORT || 3000);
 
 // ===== DISCORD CLIENT =====
 const client = new Client({
@@ -69,27 +72,35 @@ async function playNext(guildId) {
   const queue = getQueue(guildId);
 
   if (!queue || queue.songs.length === 0) {
-    if (queue?.connection) queue.connection.destroy();
+    if (queue?.connection && queue.connection.state.status !== "destroyed") {
+      queue.connection.destroy();
+    }
     queues.delete(guildId);
     return;
   }
 
   const song = queue.songs[0];
 
+  if (!song || !song.url) {
+    console.log("Song invalid:", song);
+    queue.songs.shift();
+    return playNext(guildId);
+  }
+
+  console.log("Đang phát:", song.url);
+
   try {
     const stream = await play.stream(song.url);
 
     const resource = createAudioResource(stream.stream, {
       inputType: stream.type,
-      inlineVolume: true,
+      inlineVolume: true
     });
-
-    resource.volume.setVolume(0.7); // chỉnh âm lượng
 
     queue.player.play(resource);
 
   } catch (err) {
-    console.error("Lỗi stream:", err);
+    console.log("Lỗi stream:", err);
     queue.songs.shift();
     playNext(guildId);
   }
@@ -127,7 +138,7 @@ client.on("messageCreate", async (message) => {
     adapterCreator: channel.guild.voiceAdapterCreator
   });
 
-  // 🔥 THÊM Ở ĐÂY
+  //  THÊM Ở ĐÂY
   queue.connection.on("error", error => {
     console.log("Voice connection error:", error);
   });
