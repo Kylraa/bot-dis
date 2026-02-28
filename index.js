@@ -11,6 +11,7 @@ const client = new Client({
 });
 
 const TOKEN = process.env.TOKEN;
+client.login(TOKEN);
 
 client.once("ready", () => {
     console.log(`✅ Bot đã online: ${client.user.tag}`);
