@@ -38,6 +38,11 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 
+// READY EVENT
+client.once("ready", () => {
+  console.log(`Bot online: ${client.user.tag}`);
+});
+
 const PREFIX = "n!";
 
 const queues = new Map();
@@ -104,10 +109,6 @@ async function playNext(guildId) {
     playNext(guildId);
   }
 }
-
-client.once("ready", () => {
-  console.log(`Bot online: ${client.user.tag}`);
-});
 
 client.on("messageCreate", async (message) => {
 
