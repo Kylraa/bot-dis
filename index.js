@@ -18,13 +18,9 @@ const {
 const play = require("play-dl");
 
 // ===== WEB SERVER (CHO RENDER) =====
-const express = require("express");
+const express = require('express');
 const app = express();
-
-app.get("/", (req, res) => {
-  res.send("Bot is running");
-});
-
+app.get('/', (req, res) => res.send('Bot is running!'));
 app.listen(process.env.PORT || 3000);
 
 // ===== DISCORD CLIENT =====
