@@ -105,7 +105,7 @@ async function playNext(guildId) {
   }
 }
 
-client.once("clientReady", () => {
+client.once("ready", () => {
   console.log(`Bot online: ${client.user.tag}`);
 });
 
@@ -250,4 +250,5 @@ songInfo = { url: yt[0].url };
 
 });
 
+console.log("ENV TOKEN:", process.env.TOKEN);
 client.login(process.env.TOKEN);
