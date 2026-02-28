@@ -1,15 +1,21 @@
 require('dotenv').config();
-console.log("Bot is starting...");
+
 const { Client, GatewayIntentBits } = require('discord.js');
 const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
-const express = require("express");
+const express = require('express');
 
+console.log("Bot is starting...");
+
+// ===== WEB SERVER (CHO RENDER) =====
 const app = express();
 app.get("/", (req, res) => {
-  res.send("Bot is running");
+  res.send("Bot is running!");
 });
-app.listen(process.env.PORT || 3000);
+app.listen(process.env.PORT || 3000, () => {
+  console.log("Web server started");
+});
 
+// ===== DISCORD CLIENT =====
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -19,11 +25,14 @@ const client = new Client({
   ]
 });
 
-client.once('ready', () => {
+client.once("ready", () => {
   console.log(`Bot online: ${client.user.tag}`);
 });
 
+// ===== COMMANDS =====
 client.on("messageCreate", async (message) => {
+
+  if (message.author.bot) return;
 
   if (message.content === "n!join") {
 
@@ -39,11 +48,13 @@ client.on("messageCreate", async (message) => {
       adapterCreator: channel.guild.voiceAdapterCreator
     });
 
-    message.reply("✅ Bot đã vào voice và sẽ treo tại đây!");
+    message.reply("✅ Bot đã vào voice!");
   }
 
   if (message.content === "n!leave") {
+
     const connection = getVoiceConnection(message.guild.id);
+
     if (connection) {
       connection.destroy();
       message.reply("👋 Bot đã rời voice!");
@@ -51,9 +62,8 @@ client.on("messageCreate", async (message) => {
       message.reply("❌ Bot chưa ở trong voice!");
     }
   }
+
 });
 
-client.on("error", console.error);
-client.on("shardError", console.error);
-
+// ===== LOGIN =====
 client.login(process.env.TOKEN);
