@@ -51,4 +51,7 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-client.login(process.env.TOKEN);
+client.on("error", console.error);
+client.on("shardError", console.error);
+
+client.login(process.env.TOKEN).catch(console.error);
