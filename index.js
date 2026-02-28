@@ -19,6 +19,8 @@ client.once('ready', () => {
   console.log(`Bot online: ${client.user.tag}`);
 });
 
+client.login(process.env.TOKEN);
+
 client.on("messageCreate", async (message) => {
 
     if (message.content === "n!join") {
