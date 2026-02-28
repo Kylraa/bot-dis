@@ -251,5 +251,6 @@ songInfo = { url: yt[0].url };
 
 });
 
-console.log("ENV TOKEN:", process.env.TOKEN);
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN)
+  .then(() => console.log("Login success"))
+  .catch(err => console.error("Login error:", err));
