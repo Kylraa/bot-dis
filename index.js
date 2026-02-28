@@ -1,4 +1,5 @@
 const { Client, GatewayIntentBits } = require('discord.js');
+const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
 const express = require("express");
 
 const app = express();
@@ -11,7 +12,8 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates
   ]
 });
 
@@ -19,36 +21,34 @@ client.once('ready', () => {
   console.log(`Bot online: ${client.user.tag}`);
 });
 
-client.login(process.env.TOKEN);
-
 client.on("messageCreate", async (message) => {
 
-    if (message.content === "n!join") {
+  if (message.content === "n!join") {
 
-        if (!message.member.voice.channel) {
-            return message.reply("❌ Bạn phải vào voice trước!");
-        }
-
-        const channel = message.member.voice.channel;
-
-        joinVoiceChannel({
-            channelId: channel.id,
-            guildId: channel.guild.id,
-            adapterCreator: channel.guild.voiceAdapterCreator
-        });
-
-        message.reply("✅ Bot đã vào voice và sẽ treo tại đây!");
+    if (!message.member.voice.channel) {
+      return message.reply("❌ Bạn phải vào voice trước!");
     }
 
-    if (message.content === "n!leave") {
-        const connection = getVoiceConnection(message.guild.id);
-        if (connection) {
-            connection.destroy();
-            message.reply("👋 Bot đã rời voice!");
-        } else {
-            message.reply("❌ Bot chưa ở trong voice!");
-        }
+    const channel = message.member.voice.channel;
+
+    joinVoiceChannel({
+      channelId: channel.id,
+      guildId: channel.guild.id,
+      adapterCreator: channel.guild.voiceAdapterCreator
+    });
+
+    message.reply("✅ Bot đã vào voice và sẽ treo tại đây!");
+  }
+
+  if (message.content === "n!leave") {
+    const connection = getVoiceConnection(message.guild.id);
+    if (connection) {
+      connection.destroy();
+      message.reply("👋 Bot đã rời voice!");
+    } else {
+      message.reply("❌ Bot chưa ở trong voice!");
     }
+  }
 });
 
 client.login(process.env.TOKEN);
