@@ -1,3 +1,4 @@
+console.log("Bot is starting...");
 const { Client, GatewayIntentBits } = require('discord.js');
 const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
 const express = require("express");
