@@ -1,62 +1,69 @@
 require("dotenv").config();
+const { Client, GatewayIntentBits } = require("discord.js");
+const { 
+    joinVoiceChannel, 
+    createAudioPlayer, 
+    createAudioResource, 
+    AudioPlayerStatus, 
+    getVoiceConnection, 
+    NoSubscriberBehavior,
+    StreamType
+} = require("@discordjs/voice");
 const play = require('play-dl');
+const libsodium = require('libsodium-wrappers');
+const ffmpeg = require('ffmpeg-static');
+const fs = require('fs');
+const http = require('http');
 
-// Hàm này phải được chạy và đợi (await) xong xuôi
-async function authorizeSpotify() {
-    try {
-        await play.setToken({
-            spotify: {
-                client_id: process.env.SPOTIFY_ID,
-                client_secret: process.env.SPOTIFY_SECRET,
-                market: 'VN'
-            }
-        });
-
-        // Kiểm tra xem token có thực sự hoạt động không
-        if (await play.is_expired()) {
-            await play.refreshToken();
-        }
-        console.log("✅ Spotify đã xác thực thành công!");
-    } catch (err) {
-        console.error("❌ Lỗi Spotify Auth: Kiểm tra lại ID/Secret trong .env!");
-    }
-}
-
-// Gọi hàm ngay lập tức
-authorizeSpotify();
+// Khởi tạo Client
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildVoiceStates
+    ]
+});
 
 const queues = new Map();
 const PREFIX = "n!";
 
-// 2. Hàm cấu hình hệ thống (Gom Spotify + Libsodium vào một chỗ)
-// Thay đổi đoạn setupSystem cũ bằng đoạn này
-// Cập nhật lại đoạn setupSystem trong index.js
+// TẠO SERVER GIẢ ĐỂ RENDER KHÔNG "NGỦ"
+http.createServer((req, res) => {
+    res.write("Bot is alive!");
+    res.end();
+}).listen(process.env.PORT || 8080);
+
+// CẤU HÌNH HỆ THỐNG
 async function setupSystem() {
     await libsodium.ready;
     try {
+        let youtubeCookie = "";
+        // Kiểm tra và đọc file cookies.txt nếu có
+        if (fs.existsSync('./cookies.txt')) {
+            youtubeCookie = fs.readFileSync('./cookies.txt', 'utf8');
+            console.log("✅ Đã nạp file cookies.txt thành công!");
+        } else {
+            console.log("⚠️ Không tìm thấy cookies.txt. Bot có thể bị YouTube chặn trên Render.");
+        }
+
         await play.setToken({
             spotify: {
                 client_id: process.env.SPOTIFY_ID,
                 client_secret: process.env.SPOTIFY_SECRET,
                 market: 'VN'
             },
-            // Giả lập User-Agent để YouTube bớt soi
-            youtube: { 
-                cookie: "", // Nếu có cookie sạch thì dán vào đây
-            }
+            youtube: { cookie: youtubeCookie }
         });
-        
-        // Cấu hình play-dl ưu tiên dùng các phương thức lách luật mới nhất
-        play.getFreeToken(); 
-        
-        console.log("🚀 Hệ thống Render đã sẵn sàng!");
+
+        console.log("🚀 Hệ thống âm nhạc (FFmpeg Static) đã sẵn sàng!");
     } catch (err) {
         console.error("❌ Lỗi cấu hình:", err.message);
     }
 }
 setupSystem();
 
-// 3. Hàm xử lý phát bài tiếp theo
+// HÀM PHÁT NHẠC TIẾP THEO
 async function playNext(guildId) {
     const queue = queues.get(guildId);
     if (!queue || queue.songs.length === 0) {
@@ -67,21 +74,29 @@ async function playNext(guildId) {
 
     let song = queue.songs[0];
     try {
-        // Nếu là Spotify chưa có link, tìm trên YouTube ngay lúc này
+        // Nếu là Spotify chưa có link, tìm trên YouTube
         if (song.isSpotify && !song.url) {
             const search = await play.search(song.title, { limit: 1 });
             if (search.length > 0) song.url = search[0].url;
             else throw new Error("Không tìm thấy nhạc trên YouTube");
         }
 
-        const stream = await play.stream(song.url, { discordPlayerCompatibility: true, quality: 1 });
-        const resource = createAudioResource(stream.stream, { inputType: stream.type, inlineVolume: true });
-        
+        // Tạo stream với cấu hình tối ưu cho Discord
+        const stream = await play.stream(song.url, { 
+            discordPlayerCompatibility: true, 
+            quality: 1 
+        });
+
+        const resource = createAudioResource(stream.stream, {
+            inputType: stream.type,
+            inlineVolume: true
+        });
+
         resource.volume.setVolume(0.5);
         queue.player.play(resource);
         queue.connection.subscribe(queue.player);
+        
         console.log(`🎵 Đang phát: ${song.title}`);
-
     } catch (err) {
         console.error("❌ Lỗi PlayNext:", err.message);
         queue.songs.shift();
@@ -89,12 +104,12 @@ async function playNext(guildId) {
     }
 }
 
-// 4. Sự kiện khi Bot online
-client.once("ready", () => {
-    console.log(`✅ Bot Online: ${client.user.tag}`);
+// SỰ KIỆN KHI BOT ONLINE
+client.once("clientReady", (c) => {
+    console.log(`✅ Bot Online: ${c.user.tag}`);
 });
 
-// 5. Xử lý lệnh Play
+// XỬ LÝ LỆNH PLAY
 client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.content.startsWith(PREFIX)) return;
 
@@ -104,7 +119,7 @@ client.on("messageCreate", async (message) => {
     if (command === "play") {
         const query = args.join(" ");
         if (!query || !message.member.voice.channel) {
-            return message.reply("❌ Bạn cần nhập link/tên bài và vào phòng Voice!");
+            return message.reply("❌ Nhập link/tên bài và vào Voice!");
         }
 
         let queue = queues.get(message.guild.id);
@@ -130,9 +145,7 @@ client.on("messageCreate", async (message) => {
 
             if (sp_type && sp_type !== 'search') {
                 const sp_data = await play.spotify(query);
-                
                 if (sp_type === 'track') {
-                    // Search ngay để lấy thông tin title chuẩn
                     const search = await play.search(`${sp_data.name} ${sp_data.artists[0].name}`, { limit: 1 });
                     queue.songs.push({ url: search[0].url, title: sp_data.name });
                     message.reply(`✅ Đã thêm bài hát Spotify: **${sp_data.name}**`);
@@ -140,13 +153,9 @@ client.on("messageCreate", async (message) => {
                     const allTracks = await sp_data.all_tracks();
                     message.reply(`⏳ Đang nạp **${allTracks.length}** bài từ Spotify...`);
                     for (const track of allTracks) {
-                        queue.songs.push({ 
-                            url: null, 
-                            title: `${track.name} - ${track.artists[0].name}`, 
-                            isSpotify: true 
-                        });
+                        queue.songs.push({ url: null, title: `${track.name} - ${track.artists[0].name}`, isSpotify: true });
                     }
-                    message.channel.send(`✅ Đã nạp xong playlist/album!`);
+                    message.channel.send(`✅ Đã nạp xong playlist!`);
                 }
             } else {
                 const search = await play.search(query, { limit: 1 });
@@ -155,19 +164,12 @@ client.on("messageCreate", async (message) => {
                 message.reply(`✅ Đã thêm: **${search[0].title}**`);
             }
 
-            if (queue.player.state.status === AudioPlayerStatus.Idle) {
-                playNext(message.guild.id);
-            }
+            if (queue.player.state.status === AudioPlayerStatus.Idle) playNext(message.guild.id);
         } catch (e) {
             console.error(e);
-            message.reply("❌ Lỗi khi xử lý yêu cầu!");
+            message.reply("❌ Lỗi khi xử lý link (Kiểm tra lại Cookie/IP)!");
         }
     }
 });
 
 client.login(process.env.TOKEN);
-const http = require('http');
-http.createServer((req, res) => {
-    res.write("Bot is running!");
-    res.end();
-}).listen(8080); // Render yêu cầu một cổng để giữ service online
